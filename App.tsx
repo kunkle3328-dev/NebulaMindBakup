@@ -10,6 +10,7 @@ import SplashScreen from './components/SplashScreen';
 import { generateArtifact, generateAudioOverview } from './services/ai';
 import { ThemeContext, useTheme, JobContext, useJobs } from './contexts';
 import { NebulaLogo, ThemeSelector } from './components/ThemeUI';
+import { AudioProvider } from './components/AudioProvider';
 
 // Helper for generating IDs safely
 const generateId = (): string => {
@@ -442,23 +443,30 @@ const JobProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
         setTimeout(async () => {
             try {
-                let content;
-                if (type === 'audioOverview') {
-                    // Pass the config params (length, style, voices) to the service
-                    content = await generateAudioOverview(
-                        sources, 
-                        config?.length, 
-                        config?.style, 
-                        config?.voices, 
-                        (progressMsg) => {
-                            // Update job progress state
-                            setJobs(prev => prev.map(j => j.id === jobId ? { ...j, progress: progressMsg } : j));
-                        },
-                        config?.learningIntent
-                    );
-                } else {
-                    content = await generateArtifact(type, sources);
-                }
+                // Implement timeout race condition to prevent infinite spinning
+                const jobPromise = (async () => {
+                    if (type === 'audioOverview') {
+                        return await generateAudioOverview(
+                            sources, 
+                            config?.length, 
+                            config?.style, 
+                            config?.voices, 
+                            (progressMsg) => {
+                                setJobs(prev => prev.map(j => j.id === jobId ? { ...j, progress: progressMsg } : j));
+                            },
+                            config?.learningIntent
+                        );
+                    } else {
+                        return await generateArtifact(type, sources);
+                    }
+                })();
+
+                const timeoutPromise = new Promise((_, reject) => 
+                    // Increase timeout to 5 minutes (300000ms) for Pro models / large tasks
+                    setTimeout(() => reject(new Error("Generation timed out (5m limit).")), 300000)
+                );
+
+                const content: any = await Promise.race([jobPromise, timeoutPromise]);
 
                 const nb = getNotebookById(notebookId);
                 if (nb) {
@@ -475,10 +483,10 @@ const JobProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 }
 
                 setJobs(prev => prev.map(j => j.id === jobId ? { ...j, status: 'completed' } : j));
-                addNotification("Generation Complete", `Your ${type === 'executiveBrief' ? 'Brief' : type} is ready to view.`, 'success');
+                addNotification("Generation Complete", `Your ${type === 'executiveBrief' ? 'Brief' : type} is ready.`, 'success');
 
-            } catch (error) {
-                console.error(error);
+            } catch (error: any) {
+                console.error("Job Failed:", error);
                  const nb = getNotebookById(notebookId);
                  if (nb) {
                      const idx = nb.artifacts.findIndex(a => a.id === placeholderId);
@@ -488,7 +496,7 @@ const JobProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                      }
                  }
                 setJobs(prev => prev.map(j => j.id === jobId ? { ...j, status: 'failed' } : j));
-                addNotification("Generation Failed", "Something went wrong. Please try again.", 'error');
+                addNotification("Generation Failed", error.message || "Something went wrong.", 'error');
             }
         }, 0);
     };
@@ -530,14 +538,16 @@ const App: React.FC = () => {
   return (
     <ThemeContext.Provider value={{ theme: THEMES[activeThemeId], setThemeId: setActiveThemeId, animationsEnabled, setAnimationsEnabled }}>
       <GlobalBackground />
-      <JobProvider>
-        <HashRouter>
-            <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/notebook/:id" element={<NotebookContainer />} />
-            </Routes>
-        </HashRouter>
-      </JobProvider>
+      <AudioProvider>
+        <JobProvider>
+            <HashRouter>
+                <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/notebook/:id" element={<NotebookContainer />} />
+                </Routes>
+            </HashRouter>
+        </JobProvider>
+      </AudioProvider>
     </ThemeContext.Provider>
   );
 };

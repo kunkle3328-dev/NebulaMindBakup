@@ -16,7 +16,7 @@ export interface Note {
 
 export interface Artifact {
   id: string;
-  type: 'flashcards' | 'quiz' | 'infographic' | 'slideDeck' | 'audioOverview' | 'executiveBrief' | 'researchPaper' | 'debateDossier' | 'mindMap';
+  type: 'flashcards' | 'quiz' | 'infographic' | 'slideDeck' | 'audioOverview' | 'executiveBrief' | 'researchPaper' | 'debateDossier' | 'strategicRoadmap';
   title: string;
   content: any; // Structured JSON or text
   createdAt: number;

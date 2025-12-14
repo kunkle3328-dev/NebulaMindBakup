@@ -250,7 +250,9 @@ const NotebookView: React.FC<Props> = ({ notebook, onUpdate }) => {
             </div>
 
             <div 
-                className="absolute inset-0 pb-20 md:pb-0 p-4 md:p-8 overflow-hidden"
+                // Removed overflow-hidden here to allow StudioTab's content to scroll naturally if needed
+                // Changed to overflow-y-auto for the studio container itself
+                className="absolute inset-0 pb-20 md:pb-0 p-4 md:p-8 overflow-y-auto"
                 style={{ display: activeTab === 'studio' ? 'block' : 'none' }}
             >
                 <div className="max-w-6xl mx-auto h-full">

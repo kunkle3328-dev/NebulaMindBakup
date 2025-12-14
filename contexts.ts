@@ -1,5 +1,5 @@
 
-import { createContext, useContext } from 'react';
+import { createContext, useContext, RefObject } from 'react';
 import { Theme, THEMES, ThemeId } from './constants';
 import { BackgroundJob, Notification, Artifact } from './types';
 
@@ -36,3 +36,36 @@ export const JobContext = createContext<JobContextType>({
 });
 
 export const useJobs = () => useContext(JobContext);
+
+// --- AUDIO CONTEXT ---
+export interface AudioTrack {
+    url: string;
+    title: string;
+    topic?: string;
+    coverUrl?: string;
+    duration: number;
+}
+
+interface AudioContextType {
+    isPlaying: boolean;
+    currentTrack: AudioTrack | null;
+    currentTime: number;
+    duration: number;
+    playTrack: (track: AudioTrack) => void;
+    togglePlayPause: () => void;
+    seek: (time: number) => void;
+    analyser: AnalyserNode | null; // Exposed for visualizers
+}
+
+export const AudioContext = createContext<AudioContextType>({
+    isPlaying: false,
+    currentTrack: null,
+    currentTime: 0,
+    duration: 0,
+    playTrack: () => {},
+    togglePlayPause: () => {},
+    seek: () => {},
+    analyser: null
+});
+
+export const useAudio = () => useContext(AudioContext);
